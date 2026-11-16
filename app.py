@@ -40,6 +40,7 @@ def convert():
             'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
             'extract_flat': False,
             'ffmpeg_location': './', # Menggunakan FFmpeg yang didownload semasa Render build
+            'cookiefile': 'cookies.txt',
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
