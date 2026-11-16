@@ -31,11 +31,11 @@ def convert():
     try:
         # Konfigurasi yt-dlp untuk kualiti MP3 tertinggi
         ydl_opts = {
-            'format': 'best',
+  
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '0', # '0' bermaksud kualiti paling tinggi/original (VBR)
+                'preferredquality': '192', # '0' bermaksud kualiti paling tinggi/original (VBR)
             }],
             'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
             'extract_flat': False,
