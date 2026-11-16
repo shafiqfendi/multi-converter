@@ -31,7 +31,7 @@ def convert():
     try:
         # Konfigurasi yt-dlp untuk kualiti MP3 tertinggi
         ydl_opts = {
-            'format': 'bestaudio/best',
+            'format': 'best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
