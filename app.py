@@ -10,21 +10,26 @@ def index():
         youtube_url = request.form.get('url')
         
         if not youtube_url:
-            error = "Sila masukkan link video atau playlist!"
-            return render_template('index.html', error=error)
+            return render_template('index.html', error="Sila masukkan link video!")
 
         try:
-            # Gunakan Cobalt API untuk pintas sekatan YouTube
-            api_url = "https://api.cobalt.tools/api/json"
+            # Endpoint rasmi Cobalt v7
+            api_url = "https://api.cobalt.tools/"
+            
+            # Header wajib untuk elak API dari sekat request kita
             headers = {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+                "Origin": "https://cobalt.tools",
+                "Referer": "https://cobalt.tools/",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
+            
+            # Parameter format baharu Cobalt v7
             payload = {
                 "url": youtube_url,
-                "isAudioOnly": True,
-                "aFormat": "mp3",
+                "downloadMode": "audio",
+                "audioFormat": "mp3",
                 "filenamePattern": "pretty"
             }
             
@@ -35,12 +40,16 @@ def index():
                 download_url = data.get('url')
                 
                 if download_url:
-                    # Terus bawa pelayar pengguna ke link fail MP3
                     return redirect(download_url)
                 else:
-                    error = "Gagal mendapatkan fail audio. Sila cuba link lain."
+                    error = "Gagal menjana link muat turun."
             else:
-                error = "Sistem API sedang sibuk atau link tidak disokong. Sila cuba lagi."
+                # Tangkap ralat SEBENAR dari API supaya kita tahu kalau ada salah
+                try:
+                    error_msg = res.json().get('error', {}).get('code', res.text)
+                except:
+                    error_msg = res.text
+                error = f"Ditolak oleh API (Kod {res.status_code}): {error_msg}"
                 
         except Exception as e:
             error = f"Ralat pelayan: {str(e)}"
