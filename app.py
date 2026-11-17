@@ -31,17 +31,15 @@ def convert():
     try:
         # Konfigurasi yt-dlp untuk kualiti MP3 tertinggi
         ydl_opts = {
-  
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192', # '0' bermaksud kualiti paling tinggi/original (VBR)
-            }],
-            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
-            'extract_flat': False,
-            'ffmpeg_location': './', # Menggunakan FFmpeg yang didownload semasa Render build
-            
-        }
+    'format': 'bestaudio/best',
+    'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'quiet': False,
+}
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Dapatkan maklumat video
