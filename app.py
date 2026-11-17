@@ -1,21 +1,19 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, jsonify
 import requests
 
 app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    error = None
     if request.method == 'POST':
-        # Ambil link dari form web kau
-        youtube_url = request.form.get('url') or request.form.get('youtube_url')
-        
-        if not youtube_url:
-            error = "Sila masukkan link video atau playlist!"
-            return render_template('index.html', error=error)
-
         try:
-            # Kita guna Cobalt API untuk bypass YouTube
+            # Ambil URL tanpa mengira sama ada frontend hantar sebagai JSON atau borang (Form)
+            youtube_url = request.json.get('url') if request.is_json else request.form.get('url')
+            
+            if not youtube_url:
+                return jsonify({"error": "Sila masukkan link video atau playlist!"})
+
+            # Panggilan ke Cobalt API
             api_url = "https://api.cobalt.tools/api/json"
             headers = {
                 "Accept": "application/json",
@@ -26,28 +24,27 @@ def index():
                 "url": youtube_url,
                 "isAudioOnly": True,
                 "aFormat": "mp3",
-                "filenamePattern": "pretty" # Output nama fail jadi cantik (Tajuk Lagu.mp3)
+                "filenamePattern": "pretty"
             }
             
-            # Hantar request ke API
             res = requests.post(api_url, json=payload, headers=headers)
             
             if res.status_code == 200:
                 data = res.json()
                 download_url = data.get('url')
-                
                 if download_url:
-                    # Terus redirect user ke link download MP3!
-                    return redirect(download_url)
+                    # Kembalikan link download sebagai JSON yang sah
+                    return jsonify({"url": download_url})
                 else:
-                    error = "Gagal mendapatkan fail audio. Sila cuba link lain."
+                    return jsonify({"error": "Gagal mendapatkan fail audio. Sila cuba link lain."})
             else:
-                error = "Sistem API sedang sibuk atau link tidak sah. Sila cuba lagi."
+                return jsonify({"error": "Sistem API sedang sibuk. Sila cuba lagi."})
                 
         except Exception as e:
-            error = f"Ralat sistem: {str(e)}"
+            return jsonify({"error": f"Ralat sistem: {str(e)}"})
             
-    return render_template('index.html', error=error)
+    # Paparkan halaman HTML hanya jika method adalah GET
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
