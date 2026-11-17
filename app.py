@@ -1,76 +1,53 @@
-import os
-import tempfile
-import zipfile
-import shutil
-from flask import Flask, request, send_file, render_template, jsonify, after_this_request
-import yt_dlp
+from flask import Flask, render_template, request, redirect
+import requests
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    error = None
+    if request.method == 'POST':
+        # Ambil link dari form web kau
+        youtube_url = request.form.get('url') or request.form.get('youtube_url')
+        
+        if not youtube_url:
+            error = "Sila masukkan link video atau playlist!"
+            return render_template('index.html', error=error)
 
-@app.route('/convert', methods=['POST'])
-def convert():
-    url = request.json.get('url')
-    if not url:
-        return jsonify({'error': 'Sila masukkan link YouTube yang sah.'}), 400
-
-    temp_dir = tempfile.mkdtemp()
-
-    # Fungsi untuk buang folder sementara lepas user berjaya download
-    @after_this_request
-    def cleanup(response):
         try:
-            shutil.rmtree(temp_dir)
-        except Exception as e:
-            app.logger.error(f"Gagal memadam temp dir: {e}")
-        return response
-
-    try:
-        # Konfigurasi yt-dlp untuk kualiti MP3 tertinggi
-        ydl_opts = {
-    'format': 'bestaudio/best',
-    'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    'quiet': False,
-}
-
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Dapatkan maklumat video
-            info = ydl.extract_info(url, download=True)
-        
-        # Semak sama ada link adalah playlist atau single video
-        if 'entries' in info:
-            # Jika Playlist, kita zipkan semua fail MP3
-            zip_filename = f"{info.get('title', 'Playlist_Lagu')}.zip"
-            zip_path = os.path.join(temp_dir, zip_filename)
+            # Kita guna Cobalt API untuk bypass YouTube
+            api_url = "https://api.cobalt.tools/api/json"
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+            payload = {
+                "url": youtube_url,
+                "isAudioOnly": True,
+                "aFormat": "mp3",
+                "filenamePattern": "pretty" # Output nama fail jadi cantik (Tajuk Lagu.mp3)
+            }
             
-            with zipfile.ZipFile(zip_path, 'w') as zipf:
-                for root, _, files in os.walk(temp_dir):
-                    for file in files:
-                        if file.endswith('.mp3'):
-                            zipf.write(os.path.join(root, file), file)
-                            
-            return send_file(zip_path, as_attachment=True, download_name=zip_filename)
-        
-        else:
-            # Jika Single Video, cari fail MP3 dan hantar
-            for file in os.listdir(temp_dir):
-                if file.endswith('.mp3'):
-                    file_path = os.path.join(temp_dir, file)
-                    return send_file(file_path, as_attachment=True, download_name=file)
-
-        return jsonify({'error': 'Tiada fail MP3 ditemui selepas proses.'}), 500
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+            # Hantar request ke API
+            res = requests.post(api_url, json=payload, headers=headers)
+            
+            if res.status_code == 200:
+                data = res.json()
+                download_url = data.get('url')
+                
+                if download_url:
+                    # Terus redirect user ke link download MP3!
+                    return redirect(download_url)
+                else:
+                    error = "Gagal mendapatkan fail audio. Sila cuba link lain."
+            else:
+                error = "Sistem API sedang sibuk atau link tidak sah. Sila cuba lagi."
+                
+        except Exception as e:
+            error = f"Ralat sistem: {str(e)}"
+            
+    return render_template('index.html', error=error)
 
 if __name__ == '__main__':
-    # Jalankan server
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=5000)
