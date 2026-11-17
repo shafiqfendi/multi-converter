@@ -12,52 +12,48 @@ def index():
         if not youtube_url:
             return render_template('index.html', error="Sila masukkan link video!")
 
-        # Senarai pelayan komuniti Cobalt yang tidak perlukan token JWT
-        api_instances = [
-            "https://api.cobalt.my.id/",
-            "https://cobalt.qewertyy.dev/",
-            "https://cobalt-api.peppe8o.com/",
-            "https://co.wuk.sh/"
+        download_url = None
+
+        # Senarai API tempatan/bot serantau yang sangat stabil dan bebas token
+        apis = [
+            f"https://api.siputzx.my.id/api/d/ytmp3?url={youtube_url}",
+            f"https://api.ryzendesu.vip/api/downloader/ytmp3?url={youtube_url}",
+            f"https://api.apidown.my.id/api/downloader/ytmp3?url={youtube_url}"
         ]
-        
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        }
-        
-        # Gabungan parameter untuk sokong kedua-dua versi Cobalt (v6 dan v7)
-        payload = {
-            "url": youtube_url,
-            "downloadMode": "audio",    # Parameter v7
-            "audioFormat": "mp3",       # Parameter v7
-            "isAudioOnly": True,        # Parameter v6
-            "aFormat": "mp3",           # Parameter v6
-            "filenamePattern": "pretty"
-        }
-        
-        berjaya = False
-        
-        # Sistem akan loop dan cuba satu-satu server sampai dapat
-        for api_url in api_instances:
+
+        # Sistem akan loop dan cuba setiap API satu-persatu
+        for api in apis:
             try:
-                # Tambah timeout supaya tak tunggu lama sangat kalau server tu mati
-                res = requests.post(api_url, json=payload, headers=headers, timeout=10)
-                
+                # Timeout diset pendek (10 saat) supaya kalau server mati, ia cepat lompat ke server lain
+                res = requests.get(api, timeout=10)
                 if res.status_code == 200:
                     data = res.json()
-                    download_url = data.get('url')
+                    
+                    # Struktur fail JSON berbeza ikut penyedia, kita tangkap mana-mana format yang betul
+                    download_url = data.get('url') or data.get('data', {}).get('url') or data.get('data', {}).get('dl')
                     
                     if download_url:
-                        berjaya = True
-                        return redirect(download_url)
+                        break # Berjaya dapat link MP3, terus berhenti pusing!
             except:
-                # Kalau pelayan ni gagal/timeout, abaikan dan cuba pelayan seterusnya
-                continue
-                
-        if not berjaya:
-            error = "Semua pelayan bantuan sedang sibuk. Sila cuba lagi sebentar lagi."
-            
+                continue # Kalau API ni gagal/mati, terus lompat ke API seterusnya tanpa ralat
+
+        # Fallback terakhir (Server ke-4)
+        if not download_url:
+            try:
+                payload = {"url": youtube_url, "downloadMode": "audio", "audioFormat": "mp3"}
+                res = requests.post("https://co.wuk.sh/api/json", json=payload, headers={"Accept": "application/json"}, timeout=10)
+                if res.status_code == 200:
+                    download_url = res.json().get('url')
+            except:
+                pass
+
+        # Kalau berjaya, terus hantar fail kat kau
+        if download_url:
+            return redirect(download_url)
+        else:
+            # Kalau kesemua 4 server mati atau link YouTube salah
+            error = "Ralat: Kesemua 4 pelayan pihak ketiga gagal memproses video ini. Sila pastikan link sah dan bukan video 'Live'."
+
     return render_template('index.html', error=error)
 
 if __name__ == '__main__':
