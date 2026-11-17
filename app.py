@@ -12,47 +12,51 @@ def index():
         if not youtube_url:
             return render_template('index.html', error="Sila masukkan link video!")
 
-        try:
-            # Endpoint rasmi Cobalt v7
-            api_url = "https://api.cobalt.tools/"
-            
-            # Header wajib untuk elak API dari sekat request kita
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Origin": "https://cobalt.tools",
-                "Referer": "https://cobalt.tools/",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-            
-            # Parameter format baharu Cobalt v7
-            payload = {
-                "url": youtube_url,
-                "downloadMode": "audio",
-                "audioFormat": "mp3",
-                "filenamePattern": "pretty"
-            }
-            
-            res = requests.post(api_url, json=payload, headers=headers)
-            
-            if res.status_code == 200:
-                data = res.json()
-                download_url = data.get('url')
+        # Senarai pelayan komuniti Cobalt yang tidak perlukan token JWT
+        api_instances = [
+            "https://api.cobalt.my.id/",
+            "https://cobalt.qewertyy.dev/",
+            "https://cobalt-api.peppe8o.com/",
+            "https://co.wuk.sh/"
+        ]
+        
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        
+        # Gabungan parameter untuk sokong kedua-dua versi Cobalt (v6 dan v7)
+        payload = {
+            "url": youtube_url,
+            "downloadMode": "audio",    # Parameter v7
+            "audioFormat": "mp3",       # Parameter v7
+            "isAudioOnly": True,        # Parameter v6
+            "aFormat": "mp3",           # Parameter v6
+            "filenamePattern": "pretty"
+        }
+        
+        berjaya = False
+        
+        # Sistem akan loop dan cuba satu-satu server sampai dapat
+        for api_url in api_instances:
+            try:
+                # Tambah timeout supaya tak tunggu lama sangat kalau server tu mati
+                res = requests.post(api_url, json=payload, headers=headers, timeout=10)
                 
-                if download_url:
-                    return redirect(download_url)
-                else:
-                    error = "Gagal menjana link muat turun."
-            else:
-                # Tangkap ralat SEBENAR dari API supaya kita tahu kalau ada salah
-                try:
-                    error_msg = res.json().get('error', {}).get('code', res.text)
-                except:
-                    error_msg = res.text
-                error = f"Ditolak oleh API (Kod {res.status_code}): {error_msg}"
+                if res.status_code == 200:
+                    data = res.json()
+                    download_url = data.get('url')
+                    
+                    if download_url:
+                        berjaya = True
+                        return redirect(download_url)
+            except:
+                # Kalau pelayan ni gagal/timeout, abaikan dan cuba pelayan seterusnya
+                continue
                 
-        except Exception as e:
-            error = f"Ralat pelayan: {str(e)}"
+        if not berjaya:
+            error = "Semua pelayan bantuan sedang sibuk. Sila cuba lagi sebentar lagi."
             
     return render_template('index.html', error=error)
 
