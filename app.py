@@ -40,7 +40,7 @@ def convert():
             'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
             'extract_flat': False,
             'ffmpeg_location': './', # Menggunakan FFmpeg yang didownload semasa Render build
-            
+            'extractor_args': {'youtube': {'player_client': ['android']}}
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
