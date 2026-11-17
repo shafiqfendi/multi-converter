@@ -5,6 +5,7 @@ set -o errexit
 
 # Install Python libraries
 pip install -r requirements.txt
+pip install --upgrade yt-dlp
 
 # Download dan setup fail FFmpeg static (Sebab Render tak benarkan sudo apt-get)
 echo "Downloading FFmpeg..."
